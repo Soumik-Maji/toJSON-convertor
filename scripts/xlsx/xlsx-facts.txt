@@ -1,0 +1,24 @@
+[Content_Types].xml
+_rels/
+    .rels
+xl/
+    workbook.xml
+    _rels/
+        workbook.xml.rels
+    worksheets/
+        sheet1.xml
+        sheet2.xml
+    sharedStrings.xml
+    styles.xml
+docProps/
+    core.xml
+    app.xml
+
+String storage:
+xlsx optimizes the string storage by storing in separate file & the index is shared with the actual worksheet
+
+Sheet name storage:
+keys in entries which contains "/worksheets/" only has the main data, thus the sheets in my workbook.
+exmaple -> xl/worksheets/sheet1.xml, xl/worksheets/sheet2.xml
+even after renaming the sheets the original sheet names stay as sheet1, sheet2, ...
+names are present in xl/workbook.xml & relations are present in xl/_rels/workbook.xml.rels
