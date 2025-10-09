@@ -1,25 +1,26 @@
 {
-  "name": "tojson-convertor",
-  "version": "1.0.0",
-  "description": "Basic conversion of csv, xml, xlsx data to json format",
-  "main": "index.js",
-  "scripts": {
-    "test": "\"Error: no test specified\" && exit 1"
-  },
-  "repository": {
-    "type": "git",
-    "url": "git+https://github.com/Soumik-Maji/toJSON-convertor.git"
-  },
-  "keywords": [
-    "csv-to-json",
-    "xlsx-to-json",
-    "xml-to-json",
-    "convertor"
-  ],
-  "author": "Soumik Maji",
-  "license": "GPL-3.0",
-  "bugs": {
-    "url": "https://github.com/Soumik-Maji/toJSON-convertor/issues"
-  },
-  "homepage": "https://github.com/Soumik-Maji/toJSON-convertor#readme"
+    "name": "tojson-convertor",
+    "version": "1.0.0",
+    "type": "module",
+    "description": "Basic conversion of csv, xml, xlsx data to json format",
+    "main": "index.js",
+    "scripts": {
+        "test": "\"not working\" && ./tests/test-run.sh"
+    },
+    "repository": {
+        "type": "git",
+        "url": "git+https://github.com/Soumik-Maji/toJSON-convertor.git"
+    },
+    "keywords": [
+        "csv-to-json",
+        "xlsx-to-json",
+        "xml-to-json",
+        "convertor"
+    ],
+    "author": "Soumik Maji",
+    "license": "GPL-3.0",
+    "bugs": {
+        "url": "https://github.com/Soumik-Maji/toJSON-convertor/issues"
+    },
+    "homepage": "https://github.com/Soumik-Maji/toJSON-convertor#readme"
 }
