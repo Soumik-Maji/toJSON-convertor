@@ -1,1 +1,1 @@
-import { isJsonEqual } from "./json-similarity-check.js";
+import { JsonEqual } from "./json-equal-test-util.js";

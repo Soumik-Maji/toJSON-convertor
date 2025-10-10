@@ -1,2 +1,2 @@
 cls
-node ./tests/index.test.js
+node tests/index.test.js

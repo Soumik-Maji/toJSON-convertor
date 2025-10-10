@@ -5,7 +5,7 @@
     "description": "Basic conversion of csv, xml, xlsx data to json format",
     "main": "index.js",
     "scripts": {
-        "test": "\"not working\" && ./tests/test-run.sh"
+        "test": "\"Not working\" && cmd /c ./tests/test-run.sh"
     },
     "repository": {
         "type": "git",
