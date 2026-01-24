@@ -1,7 +1,6 @@
-import { FileHandler } from "../FileHandler.js";
 import { ParserValidator } from "../ParserValidator.js";
-import { HTMLOutput } from "../../outputs/HTMLOutput.js";
 
+const constructorKey = Symbol("XLSX2JSON");
 export class XLSX2JSON {
 
     // these are updated when file is read
@@ -30,7 +29,7 @@ export class XLSX2JSON {
     // PRIVATE STATIC HELPER FUNCTIONS
     static #columnNameToNumber(name) {
         if (!/^[A-Z]+$/i.test(name))       // check if column name is alphabet only
-            HTMLOutput.showError(`Invalid column name: '${name}'`);
+            throw new Error(`Invalid column name: '${name}'`);
 
         name = name.toUpperCase();
         let result = 0;
@@ -75,7 +74,7 @@ export class XLSX2JSON {
             this.#endingColumn = XLSX2JSON.#columnNameToNumber(endingColumn);
         }
         if (this.#endingColumn && this.#startingColumn > this.#endingColumn)
-            HTMLOutput.showError(`Starting column bound '${startingColumn}' cannot be greater than ending column bound '${endingColumn}'.`);
+            throw new Error(`Starting column bound '${startingColumn}' cannot be greater than ending column bound '${endingColumn}'.`);
         return this;
     }
 
@@ -100,12 +99,9 @@ export class XLSX2JSON {
         return Object.keys(this.#sheetMapping);
     }
 
-    // for private constructor creation
-    static #isAllowed = false;
-    constructor() {
-        if (!XLSX2JSON.#isAllowed)
-            HTMLOutput.showError("Cannot call XLSX2JSON with 'new'. Call static function readFile().");
-        XLSX2JSON.#isAllowed = false;
+    constructor(passedKey) {
+        if (passedKey !== constructorKey)
+            throw new Error("Cannot call XLSX2JSON with 'new'. Call static function from().");
         return this;
     }
 
@@ -170,7 +166,7 @@ export class XLSX2JSON {
         let sharedStrings = [];
 
         if (this.#entries[sharedString] === undefined)
-            HTMLOutput.showError(`File is not proper xlsx. Cannot find ${sharedString}`);
+            throw new Error(`File is not proper xlsx. Cannot find ${sharedString}`);
 
         const ssDoc = await this.#getXMLdoc(sharedString);
         const siNodes = ssDoc.getElementsByTagName("si");
@@ -187,9 +183,9 @@ export class XLSX2JSON {
             nameMapping = {};
 
         if (this.#entries[storedNames] === undefined)
-            HTMLOutput.showError(`File is not proper xlsx. Cannot find ${storedNames}`);
+            throw new Error(`File is not proper xlsx. Cannot find ${storedNames}`);
         if (this.#entries[relatedSheets] === undefined)
-            HTMLOutput.showError(`File is not proper xlsx. Cannot find ${relatedSheets}`);
+            throw new Error(`File is not proper xlsx. Cannot find ${relatedSheets}`);
 
         let doc = await this.#getXMLdoc(storedNames);
         let nodes = doc.getElementsByTagName("sheet");
@@ -224,30 +220,10 @@ export class XLSX2JSON {
         this.#textStyles = xfs;
     }
 
-    static #checkXLSX(fileName) {
-        if (!fileName.endsWith(".xlsx"))
-            HTMLOutput.showError("Provided file is not of type xlsx");
-    }
-
-    static async readFile(xlsxInput) {
-        XLSX2JSON.#isAllowed = true;
-        const tmpObj = new XLSX2JSON();
+    static async from(xlsxArrayBuffer) {
+        const tmpObj = new XLSX2JSON(constructorKey);
         tmpObj.#resetConfig();
-        let buffer = null;
-
-        if ((xlsxInput instanceof HTMLInputElement) && xlsxInput.type === "file") {
-            if (!xlsxInput.files.length)
-                HTMLOutput.showError("No input file given.");
-            XLSX2JSON.#checkXLSX(xlsxInput.files[0].name);
-            buffer = await FileHandler.readInput(xlsxInput);
-        }
-        else if (typeof xlsxInput === "string") {
-            XLSX2JSON.#checkXLSX(xlsxInput);
-            buffer = (await FileHandler.readResource(xlsxInput))[0];
-        }
-        else {
-            HTMLOutput.showError("None of the input types matched.");
-        }
+        const buffer = xlsxArrayBuffer;
 
         tmpObj.#setEntries(buffer);
         await tmpObj.#setSharedStrings();

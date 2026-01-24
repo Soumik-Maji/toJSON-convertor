@@ -5,5 +5,5 @@ import { xlsxtest } from "./tests/test-scripts/xlsx-test.js";
 
 // csvtest();
 // jsontest();
-xmltest();
-// xlsxtest();
+// xmltest();
+xlsxtest();
