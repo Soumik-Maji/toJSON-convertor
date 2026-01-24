@@ -1,7 +1,6 @@
-import { FileHandler } from "../FileHandler.js";
 import { ParserValidator } from "../ParserValidator.js";
-import { HTMLOutput } from "../../outputs/HTMLOutput.js";
 
+const constructorKey = Symbol("CSV2JSON");
 /**
  * CSV2JSON
  * --------
@@ -20,7 +19,7 @@ import { HTMLOutput } from "../../outputs/HTMLOutput.js";
  *
  * Example:
  * ```js
- * const parser = await CSV2JSON.readFile(fileInput);
+ * const parser = await CSV2JSON.from(fileInput);
  * const { data, rejects } = parser
  *     .setColumnSeparator(";")
  *     .setTextQualifier('"')
@@ -39,18 +38,14 @@ export class CSV2JSON {
     #textQualifier;
     #skipFirstNLines;
 
-    // for private constructor creation
-    static #isAllowed = false;
-
     /**
      * @private
      * Creates a new CSV2JSON instance.
-     * Do not call directly — use {@link CSV2JSON.readFile}.
+     * Do not call directly — use {@link CSV2JSON.from}.
      */
-    constructor() {
-        if (!CSV2JSON.#isAllowed)
-            HTMLOutput.showError("Cannot call CSV2JSON with 'new'. Call static function readFile().");
-        CSV2JSON.#isAllowed = false;
+    constructor(passedKey) {
+        if (passedKey !== constructorKey)
+            throw new Error("Cannot call CSV2JSON with 'new'. Call static function from().");
         return this;
     }
 
@@ -133,50 +128,22 @@ export class CSV2JSON {
     }
 
     // MAIN CODE STARTS HERE
-
-    /**
-     * @private
-     * Validate that file has `.csv` or `.txt` extension.
-     *
-     * @param {string} fileName - Input filename
-     * @throws Error if file extension is invalid
-     */
-    static #checkCSV(fileName) {
-        if (!(fileName.endsWith(".csv") || fileName.endsWith(".txt")))
-            HTMLOutput.showError("Provided file is not of type csv or txt");
-    }
-
     /**
      * Reads CSV input from a file input, textarea, or URL string.
      *
-     * @param {HTMLInputElement|HTMLTextAreaElement|string} csvInput
+     * @param {string} csvString
      *        - File input element (`<input type="file">`)
      *        - Textarea element (`<textarea>`)
      *        - File path or URL (string)
      * @returns {Promise<CSV2JSON>} A configured parser instance.
      * @throws Error if input is invalid or not a CSV/TXT file.
      */
-    static async readFile(csvInput) {
-        CSV2JSON.#isAllowed = true;
-        const tmpObj = new CSV2JSON();
-        tmpObj.#resetConfig();  // initializing the configs for newly created objects
+    static async from(csvString) {
+        ParserValidator.validateDataType(csvString, ParserValidator.dataTypes.string);
 
-        if ((csvInput instanceof HTMLInputElement) && csvInput.type === "file") {
-            if (!csvInput.files.length)
-                HTMLOutput.showError("No input file given.");
-            CSV2JSON.#checkCSV(csvInput.files[0].name);
-            tmpObj.#data = await FileHandler.readInputText(csvInput);
-        }
-        else if (csvInput instanceof HTMLTextAreaElement) {
-            tmpObj.#data = csvInput.value;
-        }
-        else if (typeof csvInput === "string") {
-            CSV2JSON.#checkCSV(csvInput);
-            tmpObj.#data = await FileHandler.readResourceText(csvInput);
-        }
-        else {
-            HTMLOutput.showError("None of the input types matched.");
-        }
+        const tmpObj = new CSV2JSON(constructorKey);
+        tmpObj.#resetConfig();  // initializing the configs for newly created objects
+        tmpObj.#data = csvString;
         return tmpObj;
     }
 
