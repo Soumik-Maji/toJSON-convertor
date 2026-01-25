@@ -356,6 +356,7 @@ export class XLSX2JSON {
         const sheetDoc = await this.#getXMLdoc(xmlname);    // get the doc
         this.#setMergedCells(sheetDoc);
 
+        const uniqueRowIdCol = Symbol("__row__");
         const rows = sheetDoc.getElementsByTagName("row");  // get all rows
         const jsonData = [];
         for (const row of rows) {
@@ -365,7 +366,7 @@ export class XLSX2JSON {
             if (rowNumber < this.#startingRow)  // skip all rows before starting row
                 continue;
 
-            const tmpObj = { "__row__": rowNumber };
+            const tmpObj = { [uniqueRowIdCol]: rowNumber };
             for (const column of columns) {
                 let { value, location, inMerged } = this.#getDataFromTagName(column);
                 if (inMerged)   // skip if cells are merged
@@ -384,9 +385,11 @@ export class XLSX2JSON {
             jsonData.push(tmpObj);
         }
 
+        // Removal of row number stored with Symbol as key is not required here.
+        // Because Object.values() already filters out the Symbol keys & fetches only the string ones.
         return jsonData
-            .sort((a, b) => a["__row__"] - b["__row__"])    // sort the json to get proper row sequence
-            .map(({ __row__, ...rest }) => rest);   // remove the row which was used for sorting
+            .sort((a, b) => a[uniqueRowIdCol] - b[uniqueRowIdCol]);     // sort the json to get proper row sequence
+        // .map(({ uniqueRowIdCol, ...rest }) => rest);    // remove the row which was used for sorting
     }
 
     #formatJSON(data) {
@@ -449,7 +452,7 @@ export class XLSX2JSON {
     async load() {
         const sheetLocation = this.#sheetMapping[this.#sheetName];
 
-        // CUSTOM STYLING REMAINIG [maybe not needed]: READ STYLE SHEET TO GET PROPER STYLING
+        // CUSTOM STYLING REMAINING [maybe not needed]: READ STYLE SHEET TO GET PROPER STYLING
         let jsonData = await this.#getJSON(sheetLocation);
 
         // NOT ADDED: Prototype Pollution Risk (low but real)
