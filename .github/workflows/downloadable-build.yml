@@ -1,0 +1,53 @@
+name: Create Release Artifact
+
+on:
+    pull_request:
+        types: [closed]
+        branches:
+            - release
+
+jobs:
+    build-artifact:
+        runs-on: ubuntu-latest
+        steps:
+            - uses: actions/checkout@v6
+
+            - name: Remove tests
+              run: |
+                rm -rf tests/
+                echo "removed tests directory"
+                rm index.test.js index.test.html TODO.txt
+                echo "removed index.test.js, index.test.html, TODO.txt"
+                rm -rf .github/
+                echo "removed .github directory"
+                rm -rf .vscode/
+                echo "removed .vscode directory"
+
+            - name: Create archive
+              run: |
+                tar -czvf /tmp/project-dist.tar.gz --exclude=".git" -C .. ${{ github.event.repository.name }}
+                mv /tmp/project-dist.tar.gz ./project-dist.tar.gz
+
+            - name: Upload artifact
+              uses: actions/upload-artifact@v6
+              with:
+                name: production-build
+                path: project-dist.tar.gz
+
+            - name: Create Release
+              if: github.event.pull_request.merged == true
+              uses: softprops/action-gh-release@v2
+              with:
+                tag_name: release-${{ github.run_number }}
+                name: Release ${{ github.run_number }}
+                files: project-dist.tar.gz
+              env:
+                GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+            - name: Keep last 3 releases
+              uses: dev-drprasad/delete-older-releases@v0.3.4   # this is no longer maintained
+              with:
+                keep_latest: 3
+                delete_tags: true
+              env:
+                GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}

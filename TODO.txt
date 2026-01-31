@@ -1,3 +1,6 @@
 1. [DONE] change all occurences of HTMLoutput to throw new Error()
 2. [DONE] decouple convertor & data reader
+
 3. [LATER ADDITION] add some way to read from command line as well
+4. [LATER ADDITION] add HTML parsing (handle all cases of - mulitple tables, merged columns & rows, etc.)
+5. [LATER ADDITION] add YAML parsing (complex due to it's indentation syntax)
