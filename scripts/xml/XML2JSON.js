@@ -1,15 +1,12 @@
-import { FileHandler } from "../FileHandler.js";
-import { HTMLOutput } from "../../outputs/HTMLOutput.js";
+import { ParserValidator } from "../ParserValidator.js";
 
+const constructorKey = Symbol("XML2JSON");
 /**
  * XML2JSON
  * --------
- * Public API for parsing XML files or strings into JSON.
+ * Public API for parsing JSON from XML like string.
  *
- * Supports reading from:
- * - File inputs (`<input type="file">`)
- * - Textareas (`<textarea>`)
- * - File paths / URLs (string)
+ * Supports reading from string only.
  *
  * Features:
  * - Preserves attributes if requested
@@ -20,7 +17,7 @@ import { HTMLOutput } from "../../outputs/HTMLOutput.js";
  *
  * Example:
  * ```js
- * const parser = await XML2JSON.readFile(xmlFileInput);
+ * const parser = XML2JSON.from(xmlFileInput);
  * const jsonData = parser
  *     .preserveAttributes()
  *     .load();
@@ -35,18 +32,14 @@ export class XML2JSON {
     // set by user
     #preserveAttributes = false;
 
-    // for private constructor creation
-    static #isAllowed = false;
-
     /**
      * @private
      * Creates a new XML2JSON instance.
-     * Do not call directly — use {@link XML2JSON.readFile}.
+     * Do not call directly — use {@link XML2JSON.from}.
      */
-    constructor() {
-        if (!XML2JSON.#isAllowed)
-            HTMLOutput.showError("Cannot call XML2JSON with 'new'. Call static function readFile().");
-        XML2JSON.#isAllowed = false;
+    constructor(passedKey) {
+        if (passedKey !== constructorKey)
+            HTMLOutput.showError("Cannot call XML2JSON with 'new'. Call static function from().");
         return this;
     }
 
@@ -56,7 +49,6 @@ export class XML2JSON {
      *
      * Attributes will be stored under keys prefixed with `@`, e.g.,
      * `<person age="30">` → `{ "person": { "@age": "30" } }`
-     *
      * @returns {XML2JSON} this (for chaining)
      */
     preserveAttributes() {
@@ -66,49 +58,15 @@ export class XML2JSON {
 
     // MAIN CODE STARTS HERE
     /**
-     * @private
-     * Validate that file has `.xml` extension.
-     *
-     * @param {string} fileName - Input filename
-     * @throws Error if file extension is invalid
-     */
-    static #checkXML(fileName) {
-        if (!fileName.endsWith(".xml"))
-            HTMLOutput.showError("Provided file is not of type xml");
-    }
-
-    /**
-     * Reads XML input from a file input, textarea, or URL string.
-     *
-     * @param {HTMLInputElement|HTMLTextAreaElement|string} xmlInput
-     *        - File input element (`<input type="file">`)
-     *        - Textarea element (`<textarea>`)
-     *        - File path or URL (string)
-     * @returns {Promise<XML2JSON>} A configured parser instance.
+     * Reads XML input from a string.
+     * @param {string} xmlString
+     * @returns {XML2JSON} A configured parser instance.
      * @throws Error if input is invalid or not an XML file.
      */
-    static async readFile(xmlInput) {
-        XML2JSON.#isAllowed = true;
-        const tmpObj = new XML2JSON();
-
-        if (xmlInput.tagName === "INPUT" && xmlInput.type === "file") {
-            if (!xmlInput.files.length)
-                HTMLOutput.showError("No input file given.");
-            XML2JSON.#checkXML(xmlInput.files[0].name);
-            tmpObj.#data = await FileHandler.readInputText(xmlInput);
-        }
-        else if (xmlInput.tagName === "TEXTAREA") {
-            tmpObj.#data = xmlInput.value;
-        }
-        else if (typeof xmlInput === "string") {
-            XML2JSON.#checkXML(xmlInput);
-            tmpObj.#data = await FileHandler.readResourceText(xmlInput);
-        }
-        else {
-            HTMLOutput.showError("None of the input types matched.");
-        }
-
-        tmpObj.#data = (new DOMParser()).parseFromString(tmpObj.#data, "application/xml");
+    static from(xmlString) {
+        ParserValidator.validateDataType(xmlString, ParserValidator.dataTypes.string);
+        const tmpObj = new XML2JSON(constructorKey);
+        tmpObj.#data = (new DOMParser()).parseFromString(xmlString, "application/xml");
         XML2JSON.#validateWellFormedness(tmpObj.#data);
         return tmpObj;
     }
@@ -116,7 +74,6 @@ export class XML2JSON {
     /**
      * @private
      * Validates that the XML DOM is well-formed.
-     *
      * @param {Document} dom - Parsed XML DOM
      * @throws Error if XML contains parsing errors
      */
@@ -135,8 +92,7 @@ export class XML2JSON {
      * - Attributes (if preserved) stored under `@attributeName`
      * - Multiple children with same tag → array of objects
      *
-     * After parsing, configuration resets to defaults for next load.
-     *
+     * After parsing, configuration resets to defaults incase another load is required.
      * @returns {Object} JSON representation of the XML
      */
     load() {

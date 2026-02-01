@@ -1,7 +1,36 @@
-import { FileHandler } from "../FileHandler.js";
 import { ParserValidator } from "../ParserValidator.js";
-import { HTMLOutput } from "../../outputs/HTMLOutput.js";
 
+const constructorKey = Symbol("XLSX2JSON");
+/**
+ * XLSX2JSON
+ * --------
+ * Public API for parsing JSON from XLSX data.
+ *
+ * Supports reading from ArrayBuffers only
+ *
+ * Features:
+ * - List all the sheets present in xlsx file
+ * - Read data from mentioned sheet only
+ * - Detects headers (default) or generates them if missing
+ * - Relaxed header check to read data more freely (gives almost complete data)
+ * - Handles duplicates & missing headers
+ * - Configurable cell locations (starting row & column bounds)
+ *
+ * Example:
+ * ```js
+ * const parser = await XLSX2JSON.from(data);
+ * const data1 = await parser
+ *      .setSheetName("groceries")
+ *      .relaxValidation()
+ *      .load();
+ * const data2 = await parser
+ *      .setSheetName("groceries")
+ *      .setColumnBounds("B", "G")
+ *      .setRowStart(8)
+ *      .relaxValidation()
+ *      .load();
+ * ```
+ */
 export class XLSX2JSON {
 
     // these are updated when file is read
@@ -30,7 +59,7 @@ export class XLSX2JSON {
     // PRIVATE STATIC HELPER FUNCTIONS
     static #columnNameToNumber(name) {
         if (!/^[A-Z]+$/i.test(name))       // check if column name is alphabet only
-            HTMLOutput.showError(`Invalid column name: '${name}'`);
+            throw new Error(`Invalid column name: '${name}'`);
 
         name = name.toUpperCase();
         let result = 0;
@@ -61,12 +90,25 @@ export class XLSX2JSON {
         this.#mergedCells = [];     // needs to be reset for every load
     }
 
+    /**
+     * Provide sheet name need to read from.
+     * Defaults to first sheet when not called or provided empty string.
+     * @param {string} value sheet name
+     * @returns {XLSX2JSON} this (for chaining)
+     * @throws invalid sheet name throws error
+     */
     setSheetName(value) {
         ParserValidator.customValidator(!this.#sheetMapping.hasOwnProperty(value), `No sheet named ${value} is in provided file.`);
         this.#sheetName = value;
         return this;
     }
 
+    /**
+     * Provide the column bounds within which data needs to be read.
+     * @param {string} startingColumn
+     * @param {string} endingColumn defaults to null, mean read everything
+     * @returns {XLSX2JSON} this (for chaining)
+     */
     setColumnBounds(startingColumn, endingColumn = null) {
         ParserValidator.validateDataType(startingColumn, ParserValidator.dataTypes.string);
         this.#startingColumn = XLSX2JSON.#columnNameToNumber(startingColumn);
@@ -75,37 +117,52 @@ export class XLSX2JSON {
             this.#endingColumn = XLSX2JSON.#columnNameToNumber(endingColumn);
         }
         if (this.#endingColumn && this.#startingColumn > this.#endingColumn)
-            HTMLOutput.showError(`Starting column bound '${startingColumn}' cannot be greater than ending column bound '${endingColumn}'.`);
+            throw new Error(`Starting column bound '${startingColumn}' cannot be greater than ending column bound '${endingColumn}'.`);
         return this;
     }
 
+    /**
+     * Provide starting row number from where reading data should start.
+     * @param {number} rowStart
+     * @returns {XLSX2JSON} this (for chaining)
+     */
     setRowStart(rowStart) {
         ParserValidator.validateDataType(rowStart, ParserValidator.dataTypes.number);
         this.#startingRow = rowStart;
         return this;
     }
 
+    /**
+     * Boolean setter to relax the header checking process.
+     * Gives almost identical data as in excel except empty lines,
+     * @returns {XLSX2JSON} this (for chaining)
+     */
     relaxValidation() {
         this.#relaxValidation = true;
         return this;
     }
 
+    /**
+     * Boolean setter to disable first row as header.
+     * @returns {XLSX2JSON} this (for chaining)
+     */
     hasNoHeader() {
         this.#hasHeader = false;
         return this;
     }
 
     // GETTERS
+    /**
+     * all sheet names present in excel
+     * @returns {string[]}
+     */
     getAllSheetNames() {
         return Object.keys(this.#sheetMapping);
     }
 
-    // for private constructor creation
-    static #isAllowed = false;
-    constructor() {
-        if (!XLSX2JSON.#isAllowed)
-            HTMLOutput.showError("Cannot call XLSX2JSON with 'new'. Call static function readFile().");
-        XLSX2JSON.#isAllowed = false;
+    constructor(passedKey) {
+        if (passedKey !== constructorKey)
+            throw new Error("Cannot call XLSX2JSON with 'new'. Call static function from().");
         return this;
     }
 
@@ -170,7 +227,7 @@ export class XLSX2JSON {
         let sharedStrings = [];
 
         if (this.#entries[sharedString] === undefined)
-            HTMLOutput.showError(`File is not proper xlsx. Cannot find ${sharedString}`);
+            throw new Error(`File is not proper xlsx. Cannot find ${sharedString}`);
 
         const ssDoc = await this.#getXMLdoc(sharedString);
         const siNodes = ssDoc.getElementsByTagName("si");
@@ -187,9 +244,9 @@ export class XLSX2JSON {
             nameMapping = {};
 
         if (this.#entries[storedNames] === undefined)
-            HTMLOutput.showError(`File is not proper xlsx. Cannot find ${storedNames}`);
+            throw new Error(`File is not proper xlsx. Cannot find ${storedNames}`);
         if (this.#entries[relatedSheets] === undefined)
-            HTMLOutput.showError(`File is not proper xlsx. Cannot find ${relatedSheets}`);
+            throw new Error(`File is not proper xlsx. Cannot find ${relatedSheets}`);
 
         let doc = await this.#getXMLdoc(storedNames);
         let nodes = doc.getElementsByTagName("sheet");
@@ -224,30 +281,15 @@ export class XLSX2JSON {
         this.#textStyles = xfs;
     }
 
-    static #checkXLSX(fileName) {
-        if (!fileName.endsWith(".xlsx"))
-            HTMLOutput.showError("Provided file is not of type xlsx");
-    }
-
-    static async readFile(xlsxInput) {
-        XLSX2JSON.#isAllowed = true;
-        const tmpObj = new XLSX2JSON();
+    /**
+     * Initializes instance & takes array buffer for conversion
+     * @param {ArrayBuffer} xlsxArrayBuffer
+     * @returns {Promise<XLSX2JSON>} for chaining
+     */
+    static async from(xlsxArrayBuffer) {
+        const tmpObj = new XLSX2JSON(constructorKey);
         tmpObj.#resetConfig();
-        let buffer = null;
-
-        if ((xlsxInput instanceof HTMLInputElement) && xlsxInput.type === "file") {
-            if (!xlsxInput.files.length)
-                HTMLOutput.showError("No input file given.");
-            XLSX2JSON.#checkXLSX(xlsxInput.files[0].name);
-            buffer = await FileHandler.readInput(xlsxInput);
-        }
-        else if (typeof xlsxInput === "string") {
-            XLSX2JSON.#checkXLSX(xlsxInput);
-            buffer = (await FileHandler.readResource(xlsxInput))[0];
-        }
-        else {
-            HTMLOutput.showError("None of the input types matched.");
-        }
+        const buffer = xlsxArrayBuffer;
 
         tmpObj.#setEntries(buffer);
         await tmpObj.#setSharedStrings();
@@ -380,6 +422,7 @@ export class XLSX2JSON {
         const sheetDoc = await this.#getXMLdoc(xmlname);    // get the doc
         this.#setMergedCells(sheetDoc);
 
+        const uniqueRowIdCol = Symbol("__row__");
         const rows = sheetDoc.getElementsByTagName("row");  // get all rows
         const jsonData = [];
         for (const row of rows) {
@@ -389,7 +432,7 @@ export class XLSX2JSON {
             if (rowNumber < this.#startingRow)  // skip all rows before starting row
                 continue;
 
-            const tmpObj = { "__row__": rowNumber };
+            const tmpObj = { [uniqueRowIdCol]: rowNumber };
             for (const column of columns) {
                 let { value, location, inMerged } = this.#getDataFromTagName(column);
                 if (inMerged)   // skip if cells are merged
@@ -408,9 +451,11 @@ export class XLSX2JSON {
             jsonData.push(tmpObj);
         }
 
+        // Removal of row number stored with Symbol as key is not required here.
+        // Because Object.values() already filters out the Symbol keys & fetches only the string ones.
         return jsonData
-            .sort((a, b) => a["__row__"] - b["__row__"])    // sort the json to get proper row sequence
-            .map(({ __row__, ...rest }) => rest);   // remove the row which was used for sorting
+            .sort((a, b) => a[uniqueRowIdCol] - b[uniqueRowIdCol]);     // sort the json to get proper row sequence
+        // .map(({ uniqueRowIdCol, ...rest }) => rest);    // remove the row which was used for sorting
     }
 
     #formatJSON(data) {
@@ -470,10 +515,15 @@ export class XLSX2JSON {
         return arrObj;
     }
 
+    /**
+     * Parses the loaded array buffer into JSON.
+     * @note Resets all configs set for this, so that new reads from same parser can be done with new configs.
+     * @returns {Promise<Object>} JSON representation of XLSX
+     */
     async load() {
         const sheetLocation = this.#sheetMapping[this.#sheetName];
 
-        // CUSTOM STYLING REMAINIG [maybe not needed]: READ STYLE SHEET TO GET PROPER STYLING
+        // CUSTOM STYLING REMAINING [maybe not needed]: READ STYLE SHEET TO GET PROPER STYLING
         let jsonData = await this.#getJSON(sheetLocation);
 
         // NOT ADDED: Prototype Pollution Risk (low but real)

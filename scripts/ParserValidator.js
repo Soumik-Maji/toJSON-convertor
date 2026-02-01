@@ -1,5 +1,3 @@
-import { HTMLOutput } from "../outputs/HTMLOutput.js";
-
 /**
  * @internal
  * ParserValidator
@@ -10,7 +8,7 @@ import { HTMLOutput } from "../outputs/HTMLOutput.js";
  * - Type validation against a fixed set of supported JavaScript types.
  * - Custom condition-based validation with error reporting.
  *
- * Errors are reported using `HTMLOutput.showError(...)`.
+ * Errors are reported using `throw new Error(...)`.
  * This class is intended for **internal use only** and its API may change.
  */
 export class ParserValidator {
@@ -41,10 +39,10 @@ export class ParserValidator {
      */
     static validateDataType(n, type) {
         if (!(Object.values(ParserValidator.dataTypes)).includes(type))
-            HTMLOutput.showError(`${type} is not a valid data type.`);
+            throw new Error(`${type} is not a valid data type.`);
 
         if (typeof n !== type)
-            HTMLOutput.showError(`Data type of ${n} is not ${type}.`);
+            throw new Error(`Data type of ${n} is not ${type}.`);
     }
 
     /**
@@ -58,6 +56,6 @@ export class ParserValidator {
      */
     static customValidator(condition, errorMessage) {
         if (condition)
-            HTMLOutput.showError(errorMessage);
+            throw new Error(errorMessage);
     }
 }

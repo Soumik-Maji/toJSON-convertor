@@ -1,16 +1,12 @@
-import { FileHandler } from "../FileHandler.js";
 import { ParserValidator } from "../ParserValidator.js";
-import { HTMLOutput } from "../../outputs/HTMLOutput.js";
 
+const constructorKey = Symbol("CSV2JSON");
 /**
  * CSV2JSON
  * --------
- * Public API for parsing CSV or TXT files into JSON.
+ * Public API for parsing JSON from CSV like string.
  *
- * Supports reading from:
- * - File inputs (`<input type="file">`)
- * - Textareas (`<textarea>`)
- * - File paths / URLs (string)
+ * Supports reading from String data type only
  *
  * Features:
  * - Detects headers (default) or generates them if missing
@@ -20,7 +16,7 @@ import { HTMLOutput } from "../../outputs/HTMLOutput.js";
  *
  * Example:
  * ```js
- * const parser = await CSV2JSON.readFile(fileInput);
+ * const parser = CSV2JSON.from(fileInput);
  * const { data, rejects } = parser
  *     .setColumnSeparator(";")
  *     .setTextQualifier('"')
@@ -39,18 +35,14 @@ export class CSV2JSON {
     #textQualifier;
     #skipFirstNLines;
 
-    // for private constructor creation
-    static #isAllowed = false;
-
     /**
      * @private
      * Creates a new CSV2JSON instance.
-     * Do not call directly — use {@link CSV2JSON.readFile}.
+     * Do not call directly — use {@link CSV2JSON.from}.
      */
-    constructor() {
-        if (!CSV2JSON.#isAllowed)
-            HTMLOutput.showError("Cannot call CSV2JSON with 'new'. Call static function readFile().");
-        CSV2JSON.#isAllowed = false;
+    constructor(passedKey) {
+        if (passedKey !== constructorKey)
+            throw new Error("Cannot call CSV2JSON with 'new'. Call static function from().");
         return this;
     }
 
@@ -70,7 +62,6 @@ export class CSV2JSON {
     /**
      * Disable header detection.
      * Instead, auto-generate headers (`c0`, `c1`, …).
-     *
      * @returns {CSV2JSON} this (for chaining)
      */
     hasNoHeader() {
@@ -82,7 +73,6 @@ export class CSV2JSON {
      * Define a custom row separator.
      *
      * NOTE: `\r\n` & `\r` are replaced with `\n` here & in {@link CSV2JSON.load()} for consistency across systems
-     *
      * @param {string} value - e.g., "\n", ";" or "|"
      * @returns {CSV2JSON} this (for chaining)
      */
@@ -97,7 +87,6 @@ export class CSV2JSON {
 
     /**
      * Define a custom column separator.
-     *
      * @param {string} value - e.g., ",", ";", "\t"
      * @returns {CSV2JSON} this (for chaining)
      */
@@ -109,7 +98,6 @@ export class CSV2JSON {
 
     /**
      * Define a text qualifier (quote character) to allow separators inside quoted strings.
-     *
      * @param {string} value - e.g., `"`, `'`
      * @returns {CSV2JSON} this (for chaining)
      */
@@ -121,7 +109,7 @@ export class CSV2JSON {
 
     /**
      * Skip a fixed number of lines before parsing.
-     *
+     * @note **skipping** is done after **ROW separation**
      * @param {number} value - number of lines to skip (must be >= 0)
      * @returns {CSV2JSON} this (for chaining)
      */
@@ -133,50 +121,18 @@ export class CSV2JSON {
     }
 
     // MAIN CODE STARTS HERE
-
     /**
-     * @private
-     * Validate that file has `.csv` or `.txt` extension.
-     *
-     * @param {string} fileName - Input filename
-     * @throws Error if file extension is invalid
+     * Initializes instance & takes a string for conversion.
+     * @param {string} csvString
+     * @returns {CSV2JSON} A configured parser instance.
+     * @throws Error if input is not a string.
      */
-    static #checkCSV(fileName) {
-        if (!(fileName.endsWith(".csv") || fileName.endsWith(".txt")))
-            HTMLOutput.showError("Provided file is not of type csv or txt");
-    }
+    static from(csvString) {
+        ParserValidator.validateDataType(csvString, ParserValidator.dataTypes.string);
 
-    /**
-     * Reads CSV input from a file input, textarea, or URL string.
-     *
-     * @param {HTMLInputElement|HTMLTextAreaElement|string} csvInput
-     *        - File input element (`<input type="file">`)
-     *        - Textarea element (`<textarea>`)
-     *        - File path or URL (string)
-     * @returns {Promise<CSV2JSON>} A configured parser instance.
-     * @throws Error if input is invalid or not a CSV/TXT file.
-     */
-    static async readFile(csvInput) {
-        CSV2JSON.#isAllowed = true;
-        const tmpObj = new CSV2JSON();
+        const tmpObj = new CSV2JSON(constructorKey);
         tmpObj.#resetConfig();  // initializing the configs for newly created objects
-
-        if ((csvInput instanceof HTMLInputElement) && csvInput.type === "file") {
-            if (!csvInput.files.length)
-                HTMLOutput.showError("No input file given.");
-            CSV2JSON.#checkCSV(csvInput.files[0].name);
-            tmpObj.#data = await FileHandler.readInputText(csvInput);
-        }
-        else if (csvInput instanceof HTMLTextAreaElement) {
-            tmpObj.#data = csvInput.value;
-        }
-        else if (typeof csvInput === "string") {
-            CSV2JSON.#checkCSV(csvInput);
-            tmpObj.#data = await FileHandler.readResourceText(csvInput);
-        }
-        else {
-            HTMLOutput.showError("None of the input types matched.");
-        }
+        tmpObj.#data = csvString;
         return tmpObj;
     }
 
@@ -192,7 +148,6 @@ export class CSV2JSON {
      *   - Deduplicates headers by appending `_0`, `_1`, etc.
      * - If `#hasHeader` is false:
      *   - Creates default headers: `c0`, `c1`, …
-     *
      * @param {string[]} rows - Array of raw row strings (first row expected as header if present)
      * @returns {string[]} Normalized header array
      */
@@ -252,7 +207,6 @@ export class CSV2JSON {
      * "John, Doe",25,"New York"
      * ```
      * → `["John, Doe", "25", "New York"]`
-     *
      * @param {string} row - Single CSV row string
      * @returns {string[]} Array of column values
      */
@@ -282,20 +236,19 @@ export class CSV2JSON {
     }
 
     /**
-     * Parses the loaded CSV data into JSON.
+     * Parses the loaded string data into JSON.
      *
      * Behavior:
      * - If headers are enabled, uses first row as keys.
      * - Empty headers become `"missing_header"`.
      * - Duplicate headers are renamed (`header`, `header_0`, …).
      * - If headers are disabled, columns are named `c0`, `c1`, …
-     * - Malformed rows (wrong number of columns) are skipped and logged in `rejects`.
+     * - Malformed rows (wrong number of columns) are skipped and stored in `rejects`.
      *
-     * After parsing, configuration resets to defaults for next load.
-     *
+     * After parsing, configuration resets to defaults incase another load is required.
      * @returns {{ data: Object[], rejects: string[] }}
      *   - `data`: Array of parsed row objects
-     *   - `rejects`: Array of Strings containing skipped/malformed rows
+     *   - `rejects`: Array of Strings containing skipped malformed rows
      */
     load() {
 
