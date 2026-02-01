@@ -12,6 +12,7 @@ export async function xlsxtest() {
         const data = await response.arrayBuffer();
         const parser = await XLSX2JSON.from(data);
 
+        // await test0(parser);
         await testSheetName(parser);
         await test1(parser);
         await test2(parser);
@@ -24,6 +25,16 @@ export async function xlsxtest() {
     } catch (error) {
         console.error(error);
     }
+}
+
+async function test0(parser) {
+    console.log("Wrong sheet name");
+    let data = await parser
+        .setSheetName("wrong")
+        .hasNoHeader()
+        .relaxValidation()
+        .load();
+    console.table(data);
 }
 
 async function test7(parser) {

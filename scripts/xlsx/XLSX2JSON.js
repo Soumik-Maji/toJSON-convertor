@@ -1,6 +1,36 @@
 import { ParserValidator } from "../ParserValidator.js";
 
 const constructorKey = Symbol("XLSX2JSON");
+/**
+ * XLSX2JSON
+ * --------
+ * Public API for parsing JSON from XLSX data.
+ *
+ * Supports reading from ArrayBuffers only
+ *
+ * Features:
+ * - List all the sheets present in xlsx file
+ * - Read data from mentioned sheet only
+ * - Detects headers (default) or generates them if missing
+ * - Relaxed header check to read data more freely (gives almost complete data)
+ * - Handles duplicates & missing headers
+ * - Configurable cell locations (starting row & column bounds)
+ *
+ * Example:
+ * ```js
+ * const parser = await XLSX2JSON.from(data);
+ * const data1 = await parser
+ *      .setSheetName("groceries")
+ *      .relaxValidation()
+ *      .load();
+ * const data2 = await parser
+ *      .setSheetName("groceries")
+ *      .setColumnBounds("B", "G")
+ *      .setRowStart(8)
+ *      .relaxValidation()
+ *      .load();
+ * ```
+ */
 export class XLSX2JSON {
 
     // these are updated when file is read
@@ -60,12 +90,25 @@ export class XLSX2JSON {
         this.#mergedCells = [];     // needs to be reset for every load
     }
 
+    /**
+     * Provide sheet name need to read from.
+     * Defaults to first sheet when not called or provided empty string.
+     * @param {string} value sheet name
+     * @returns {XLSX2JSON} this (for chaining)
+     * @throws invalid sheet name throws error
+     */
     setSheetName(value) {
         ParserValidator.customValidator(!this.#sheetMapping.hasOwnProperty(value), `No sheet named ${value} is in provided file.`);
         this.#sheetName = value;
         return this;
     }
 
+    /**
+     * Provide the column bounds within which data needs to be read.
+     * @param {string} startingColumn
+     * @param {string} endingColumn defaults to null, mean read everything
+     * @returns {XLSX2JSON} this (for chaining)
+     */
     setColumnBounds(startingColumn, endingColumn = null) {
         ParserValidator.validateDataType(startingColumn, ParserValidator.dataTypes.string);
         this.#startingColumn = XLSX2JSON.#columnNameToNumber(startingColumn);
@@ -78,23 +121,41 @@ export class XLSX2JSON {
         return this;
     }
 
+    /**
+     * Provide starting row number from where reading data should start.
+     * @param {number} rowStart
+     * @returns {XLSX2JSON} this (for chaining)
+     */
     setRowStart(rowStart) {
         ParserValidator.validateDataType(rowStart, ParserValidator.dataTypes.number);
         this.#startingRow = rowStart;
         return this;
     }
 
+    /**
+     * Boolean setter to relax the header checking process.
+     * Gives almost identical data as in excel except empty lines,
+     * @returns {XLSX2JSON} this (for chaining)
+     */
     relaxValidation() {
         this.#relaxValidation = true;
         return this;
     }
 
+    /**
+     * Boolean setter to disable first row as header.
+     * @returns {XLSX2JSON} this (for chaining)
+     */
     hasNoHeader() {
         this.#hasHeader = false;
         return this;
     }
 
     // GETTERS
+    /**
+     * all sheet names present in excel
+     * @returns {string[]}
+     */
     getAllSheetNames() {
         return Object.keys(this.#sheetMapping);
     }
@@ -220,6 +281,11 @@ export class XLSX2JSON {
         this.#textStyles = xfs;
     }
 
+    /**
+     * Initializes instance & takes array buffer for conversion
+     * @param {ArrayBuffer} xlsxArrayBuffer
+     * @returns {Promise<XLSX2JSON>} for chaining
+     */
     static async from(xlsxArrayBuffer) {
         const tmpObj = new XLSX2JSON(constructorKey);
         tmpObj.#resetConfig();
@@ -449,6 +515,11 @@ export class XLSX2JSON {
         return arrObj;
     }
 
+    /**
+     * Parses the loaded array buffer into JSON.
+     * @note Resets all configs set for this, so that new reads from same parser can be done with new configs.
+     * @returns {Promise<Object>} JSON representation of XLSX
+     */
     async load() {
         const sheetLocation = this.#sheetMapping[this.#sheetName];
 
