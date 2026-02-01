@@ -6,14 +6,11 @@ const constructorKey = Symbol("JSON2JSON");
  * ----------
  * Public API for reading and parsing JSON data.
  *
- * Supports reading JSON from:
- * - File input elements (`<input type="file">`)
- * - Textarea elements (`<textarea>`)
- * - File paths / URLs (string)
+ * Supports reading JSON from string
  *
  * Usage:
  * ```js
- * const reader = await JSONReader.from(fileInput);
+ * const reader = JSONReader.from(fileInput);
  * const data = reader.load(); // returns parsed JSON object
  * ```
  */
@@ -34,16 +31,13 @@ export class JSON2JSON {
     }
 
     /**
-     * Reads JSON2JSON input from a file input, textarea, or URL string.
+     * Reads JSON2JSON input from a string.
      *
      * @param {string} jsonString
-     *        - File input element (`<input type="file">`)
-     *        - Textarea element (`<textarea>`)
-     *        - File path or URL (string)
-     * @returns {Promise<JSON2JSON>} A configured parser instance.
-     * @throws Error if input is invalid or not a json file.
+     * @returns {JSON2JSON} A configured parser instance.
+     * @throws Error if input is not a string.
      */
-    static async from(jsonString) {
+    static from(jsonString) {
         ParserValidator.validateDataType(jsonString, ParserValidator.dataTypes.string);
         const tmpObj = new JSON2JSON(constructorKey);
         tmpObj.#data = jsonString;
@@ -51,7 +45,7 @@ export class JSON2JSON {
     }
 
     /**
-     * Parses the stored JSON.
+     * Parses the string to JSON.
      *
      * @returns {any} Parsed JSON object
      * @throws Error if the JSON string is invalid

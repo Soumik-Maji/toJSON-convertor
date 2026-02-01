@@ -1,10 +1,61 @@
 import { JSON2JSON } from "../../scripts/json/JSON2JSON.js";
 
-export async function jsontest() {
+export function jsontest() {
+    console.log("-------------------------------------------");
     console.log("JSON testing process works");
 
-    const jsonText = `
-    [
+    test1();
+    test2();
+}
+
+function test2() {
+
+    const jsonText = `{
+    "users":[
+    {
+        "id": 1,
+        "first_name": "Jeanette",
+        "last_name": "Penddreth",
+        "email": "jpenddreth0@census.gov",
+        "gender": "Female",
+        "ip_address": "26.58.193.2"
+    },
+    {
+        "id": 2,
+        "first_name": "Giavani",
+        "last_name": "Frediani",
+        "email": "gfrediani1@senate.gov",
+        "gender": "Male",
+        "ip_address": "229.179.4.212"
+    },
+    {
+        "id": 3,
+        "first_name": "Noell",
+        "last_name": "Bea",
+        "email": "nbea2@imageshack.us",
+        "gender": "Female",
+        "ip_address": "180.66.162.255"
+    },
+    {
+        "id": 4,
+        "first_name": "Willard",
+        "last_name": "Valek",
+        "email": "wvalek3@vk.com",
+        "gender": "Male",
+        "ip_addres": "67.76.188.26"
+    }
+]
+    }`;
+
+    const data = JSON2JSON.from(jsonText).load();
+
+    console.table(data);
+    console.log(data);
+}
+
+function test1() {
+
+    const jsonText = `[
     {
         "id": 1,
         "first_name": "Jeanette",
@@ -39,8 +90,7 @@ export async function jsontest() {
     }
 ]`;
 
-    const parser = await JSON2JSON.from(jsonText);
-    const data = parser.load();
+    const data = JSON2JSON.from(jsonText).load();
 
     console.table(data);
     console.log(data);
