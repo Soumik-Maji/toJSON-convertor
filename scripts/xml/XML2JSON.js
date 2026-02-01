@@ -4,12 +4,9 @@ const constructorKey = Symbol("XML2JSON");
 /**
  * XML2JSON
  * --------
- * Public API for parsing XML files or strings into JSON.
+ * Public API for parsing XML strings into JSON.
  *
- * Supports reading from:
- * - File inputs (`<input type="file">`)
- * - Textareas (`<textarea>`)
- * - File paths / URLs (string)
+ * Supports reading from string only.
  *
  * Features:
  * - Preserves attributes if requested
@@ -20,7 +17,7 @@ const constructorKey = Symbol("XML2JSON");
  *
  * Example:
  * ```js
- * const parser = await XML2JSON.from(xmlFileInput);
+ * const parser = XML2JSON.from(xmlFileInput);
  * const jsonData = parser
  *     .preserveAttributes()
  *     .load();
@@ -62,16 +59,13 @@ export class XML2JSON {
 
     // MAIN CODE STARTS HERE
     /**
-     * Reads XML input from a file input, textarea, or URL string.
+     * Reads XML input from a string.
      *
      * @param {string} xmlString
-     *        - File input element (`<input type="file">`)
-     *        - Textarea element (`<textarea>`)
-     *        - File path or URL (string)
-     * @returns {Promise<XML2JSON>} A configured parser instance.
+     * @returns {XML2JSON} A configured parser instance.
      * @throws Error if input is invalid or not an XML file.
      */
-    static async from(xmlString) {
+    static from(xmlString) {
         ParserValidator.validateDataType(xmlString, ParserValidator.dataTypes.string);
         const tmpObj = new XML2JSON(constructorKey);
         tmpObj.#data = (new DOMParser()).parseFromString(xmlString, "application/xml");
@@ -101,7 +95,7 @@ export class XML2JSON {
      * - Attributes (if preserved) stored under `@attributeName`
      * - Multiple children with same tag → array of objects
      *
-     * After parsing, configuration resets to defaults for next load.
+     * After parsing, configuration resets to defaults incase another load is required.
      *
      * @returns {Object} JSON representation of the XML
      */

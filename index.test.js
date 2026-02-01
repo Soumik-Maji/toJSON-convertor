@@ -4,6 +4,6 @@ import { xmltest } from "./tests/test-scripts/xml-test.js";
 import { xlsxtest } from "./tests/test-scripts/xlsx-test.js";
 
 // csvtest();
-jsontest();
-// xmltest();
+// jsontest();
+xmltest();
 // xlsxtest();

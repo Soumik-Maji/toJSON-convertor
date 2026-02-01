@@ -1,6 +1,6 @@
 import { XML2JSON } from "../../scripts/xml/XML2JSON.js";
 
-export async function xmltest() {
+export function xmltest() {
     console.log("XML testing process works");
 
     const xmlText = `
@@ -46,7 +46,7 @@ export async function xmltest() {
 `;
 
 
-    const parser = await XML2JSON.from(xmlText);
+    const parser = XML2JSON.from(xmlText);
     let data;
     data = parser.preserveAttributes().load();
     console.log(JSON.stringify(data, null, 2));
