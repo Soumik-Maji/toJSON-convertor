@@ -6,10 +6,7 @@ const constructorKey = Symbol("CSV2JSON");
  * --------
  * Public API for parsing CSV or TXT files into JSON.
  *
- * Supports reading from:
- * - File inputs (`<input type="file">`)
- * - Textareas (`<textarea>`)
- * - File paths / URLs (string)
+ * Supports reading from String data type only
  *
  * Features:
  * - Detects headers (default) or generates them if missing
@@ -19,7 +16,7 @@ const constructorKey = Symbol("CSV2JSON");
  *
  * Example:
  * ```js
- * const parser = await CSV2JSON.from(fileInput);
+ * const parser = CSV2JSON.from(fileInput);
  * const { data, rejects } = parser
  *     .setColumnSeparator(";")
  *     .setTextQualifier('"')
@@ -117,6 +114,7 @@ export class CSV2JSON {
     /**
      * Skip a fixed number of lines before parsing.
      *
+     * @note **skipping** is done after **ROW separation**
      * @param {number} value - number of lines to skip (must be >= 0)
      * @returns {CSV2JSON} this (for chaining)
      */
@@ -129,16 +127,13 @@ export class CSV2JSON {
 
     // MAIN CODE STARTS HERE
     /**
-     * Reads CSV input from a file input, textarea, or URL string.
+     * Initializes instance & takes a string for conversion.
      *
      * @param {string} csvString
-     *        - File input element (`<input type="file">`)
-     *        - Textarea element (`<textarea>`)
-     *        - File path or URL (string)
-     * @returns {Promise<CSV2JSON>} A configured parser instance.
-     * @throws Error if input is invalid or not a CSV/TXT file.
+     * @returns {CSV2JSON} A configured parser instance.
+     * @throws Error if input is not a string.
      */
-    static async from(csvString) {
+    static from(csvString) {
         ParserValidator.validateDataType(csvString, ParserValidator.dataTypes.string);
 
         const tmpObj = new CSV2JSON(constructorKey);
@@ -249,20 +244,20 @@ export class CSV2JSON {
     }
 
     /**
-     * Parses the loaded CSV data into JSON.
+     * Parses the loaded string data into JSON.
      *
      * Behavior:
      * - If headers are enabled, uses first row as keys.
      * - Empty headers become `"missing_header"`.
      * - Duplicate headers are renamed (`header`, `header_0`, …).
      * - If headers are disabled, columns are named `c0`, `c1`, …
-     * - Malformed rows (wrong number of columns) are skipped and logged in `rejects`.
+     * - Malformed rows (wrong number of columns) are skipped and stored in `rejects`.
      *
-     * After parsing, configuration resets to defaults for next load.
+     * After parsing, configuration resets to defaults incase another load is required.
      *
      * @returns {{ data: Object[], rejects: string[] }}
      *   - `data`: Array of parsed row objects
-     *   - `rejects`: Array of Strings containing skipped/malformed rows
+     *   - `rejects`: Array of Strings containing skipped malformed rows
      */
     load() {
 

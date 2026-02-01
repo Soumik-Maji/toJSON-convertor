@@ -1,8 +1,29 @@
 import { CSV2JSON } from "../../scripts/csv/CSV2JSON.js";
 
-export async function csvtest() {
+export function csvtest() {
     console.log("-------------------------------------------");
     console.log("CSV testing process works");
+
+    test1();
+    test2();
+}
+
+function test2() {
+    const text = "Alice,15,B:Bob,14,'A,D':Eve,13,C:Sam,14,D:Dan,15,C,B";
+    const { data, rejects } = CSV2JSON.from(text)
+        .hasNoHeader()
+        .setRowSeparator(":")
+        .setColumnSeparator(",")
+        .setTextQualifier("'")
+        .load();
+
+    console.log("data");
+    console.table(data);
+    console.log("\nrejects");
+    console.log(rejects);
+}
+
+function test1() {
 
     const text = `
 Below csv contains Team Erelic participant's data
@@ -28,7 +49,7 @@ prjId, prjName
 1,legar
 6,dip`;
 
-    const parser = await CSV2JSON.from(text);
+    const parser = CSV2JSON.from(text);
     const { data, rejects } = parser
         .setSkipFirstNLines(1)
         // .setSkipFirstNLines(19)
