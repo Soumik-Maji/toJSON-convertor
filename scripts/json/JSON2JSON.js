@@ -4,7 +4,7 @@ const constructorKey = Symbol("JSON2JSON");
 /**
  * JSONReader
  * ----------
- * Public API for reading and parsing JSON data.
+ * Public API for parsing JSON from string.
  *
  * Supports reading JSON from string
  *
@@ -31,8 +31,7 @@ export class JSON2JSON {
     }
 
     /**
-     * Reads JSON2JSON input from a string.
-     *
+     * Initializes instance & takes string for conversion
      * @param {string} jsonString
      * @returns {JSON2JSON} A configured parser instance.
      * @throws Error if input is not a string.
@@ -46,7 +45,6 @@ export class JSON2JSON {
 
     /**
      * Parses the string to JSON.
-     *
      * @returns {any} Parsed JSON object
      * @throws Error if the JSON string is invalid
      */

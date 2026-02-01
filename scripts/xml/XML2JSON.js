@@ -4,7 +4,7 @@ const constructorKey = Symbol("XML2JSON");
 /**
  * XML2JSON
  * --------
- * Public API for parsing XML strings into JSON.
+ * Public API for parsing JSON from XML like string.
  *
  * Supports reading from string only.
  *
@@ -49,7 +49,6 @@ export class XML2JSON {
      *
      * Attributes will be stored under keys prefixed with `@`, e.g.,
      * `<person age="30">` → `{ "person": { "@age": "30" } }`
-     *
      * @returns {XML2JSON} this (for chaining)
      */
     preserveAttributes() {
@@ -60,7 +59,6 @@ export class XML2JSON {
     // MAIN CODE STARTS HERE
     /**
      * Reads XML input from a string.
-     *
      * @param {string} xmlString
      * @returns {XML2JSON} A configured parser instance.
      * @throws Error if input is invalid or not an XML file.
@@ -76,7 +74,6 @@ export class XML2JSON {
     /**
      * @private
      * Validates that the XML DOM is well-formed.
-     *
      * @param {Document} dom - Parsed XML DOM
      * @throws Error if XML contains parsing errors
      */
@@ -96,7 +93,6 @@ export class XML2JSON {
      * - Multiple children with same tag → array of objects
      *
      * After parsing, configuration resets to defaults incase another load is required.
-     *
      * @returns {Object} JSON representation of the XML
      */
     load() {

@@ -4,7 +4,7 @@ const constructorKey = Symbol("CSV2JSON");
 /**
  * CSV2JSON
  * --------
- * Public API for parsing CSV or TXT files into JSON.
+ * Public API for parsing JSON from CSV like string.
  *
  * Supports reading from String data type only
  *
@@ -62,7 +62,6 @@ export class CSV2JSON {
     /**
      * Disable header detection.
      * Instead, auto-generate headers (`c0`, `c1`, …).
-     *
      * @returns {CSV2JSON} this (for chaining)
      */
     hasNoHeader() {
@@ -74,7 +73,6 @@ export class CSV2JSON {
      * Define a custom row separator.
      *
      * NOTE: `\r\n` & `\r` are replaced with `\n` here & in {@link CSV2JSON.load()} for consistency across systems
-     *
      * @param {string} value - e.g., "\n", ";" or "|"
      * @returns {CSV2JSON} this (for chaining)
      */
@@ -89,7 +87,6 @@ export class CSV2JSON {
 
     /**
      * Define a custom column separator.
-     *
      * @param {string} value - e.g., ",", ";", "\t"
      * @returns {CSV2JSON} this (for chaining)
      */
@@ -101,7 +98,6 @@ export class CSV2JSON {
 
     /**
      * Define a text qualifier (quote character) to allow separators inside quoted strings.
-     *
      * @param {string} value - e.g., `"`, `'`
      * @returns {CSV2JSON} this (for chaining)
      */
@@ -113,7 +109,6 @@ export class CSV2JSON {
 
     /**
      * Skip a fixed number of lines before parsing.
-     *
      * @note **skipping** is done after **ROW separation**
      * @param {number} value - number of lines to skip (must be >= 0)
      * @returns {CSV2JSON} this (for chaining)
@@ -128,7 +123,6 @@ export class CSV2JSON {
     // MAIN CODE STARTS HERE
     /**
      * Initializes instance & takes a string for conversion.
-     *
      * @param {string} csvString
      * @returns {CSV2JSON} A configured parser instance.
      * @throws Error if input is not a string.
@@ -154,7 +148,6 @@ export class CSV2JSON {
      *   - Deduplicates headers by appending `_0`, `_1`, etc.
      * - If `#hasHeader` is false:
      *   - Creates default headers: `c0`, `c1`, …
-     *
      * @param {string[]} rows - Array of raw row strings (first row expected as header if present)
      * @returns {string[]} Normalized header array
      */
@@ -214,7 +207,6 @@ export class CSV2JSON {
      * "John, Doe",25,"New York"
      * ```
      * → `["John, Doe", "25", "New York"]`
-     *
      * @param {string} row - Single CSV row string
      * @returns {string[]} Array of column values
      */
@@ -254,7 +246,6 @@ export class CSV2JSON {
      * - Malformed rows (wrong number of columns) are skipped and stored in `rejects`.
      *
      * After parsing, configuration resets to defaults incase another load is required.
-     *
      * @returns {{ data: Object[], rejects: string[] }}
      *   - `data`: Array of parsed row objects
      *   - `rejects`: Array of Strings containing skipped malformed rows
