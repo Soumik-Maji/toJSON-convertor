@@ -26,13 +26,13 @@ jobs:
             - name: Create archive
               run: |
                 tar -czvf /tmp/project-dist.tar.gz --exclude=".git" -C .. ${{ github.event.repository.name }}
-                mv /tmp/project-dist.tar.gz ./project-dist.tar.gz
+                mv /tmp/project-dist.tar.gz ./${{ github.event.repository.name }}.tar.gz
 
             - name: Upload artifact
               uses: actions/upload-artifact@v6
               with:
                 name: production-build
-                path: project-dist.tar.gz
+                path: ${{ github.event.repository.name }}.tar.gz
 
             - name: Create Release
               if: github.event.pull_request.merged == true
@@ -40,14 +40,14 @@ jobs:
               with:
                 tag_name: release-${{ github.run_number }}
                 name: Release ${{ github.run_number }}
-                files: project-dist.tar.gz
+                files: ${{ github.event.repository.name }}.tar.gz
               env:
                 GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
-            - name: Keep last 3 releases
+            - name: Keep lastest release only
               uses: dev-drprasad/delete-older-releases@v0.3.4   # this is no longer maintained
               with:
-                keep_latest: 3
+                keep_latest: 1
                 delete_tags: true
               env:
                 GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
