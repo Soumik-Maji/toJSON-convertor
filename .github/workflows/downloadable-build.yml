@@ -12,6 +12,11 @@ jobs:
         steps:
             - uses: actions/checkout@v6
 
+            - name: Setup Node
+              uses: actions/setup-node@v4
+              with:
+                node-version: 20
+
             - name: Remove tests
               run: |
                 rm -rf tests/
@@ -22,6 +27,16 @@ jobs:
                 echo "removed .github directory"
                 rm -rf .vscode/
                 echo "removed .vscode directory"
+
+            - name: Install Terser
+              run: npm install -g terser
+
+            - name: Minify JS files in-place
+              run: |
+                find . -name "*.js" | while read file; do
+                  terser "$file" -o "$file" --compress --mangle --comments '/^\*(.*?)/'
+                done
+                echo "Minified all JavaScript files in-place"
 
             - name: Create archive
               run: |
