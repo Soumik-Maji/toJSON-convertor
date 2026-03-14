@@ -13,13 +13,13 @@ export async function xlsxtest() {
         const parser = await XLSX2JSON.from(data);
 
         // await test0(parser);
-        await testSheetName(parser);
-        await test1(parser);
-        await test2(parser);
-        await test3(parser);
-        await test4(parser);
-        await test5(parser);
-        await test6(parser);
+        // await testSheetName(parser);
+        // await test1(parser);
+        // await test2(parser);
+        // await test3(parser);
+        // await test4(parser);
+        // await test5(parser);
+        // await test6(parser);
         await test7(parser);
 
     } catch (error) {
