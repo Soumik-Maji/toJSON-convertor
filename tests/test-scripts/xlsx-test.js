@@ -43,6 +43,8 @@ async function test7(parser) {
         .setSheetName("Sheet1")
         .hasNoHeader()
         .relaxValidation()
+        // .setColumnBounds("B")    // WORKING
+        // .setRowStart(2)     // NOT WORKING
         .load();
     console.table(data);
 }

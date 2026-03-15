@@ -425,6 +425,7 @@ export class XLSX2JSON {
 
         const anchorValues = {};    // for gathering the actual data holder cell for merged cells
         const anchorCells = new Set(Object.values(this.#mergedCells));
+        const rowMap = new Map();   // rowNumber -> tmpObj for O(1) anchor lookup
 
         const uniqueRowIdCol = Symbol("__row__");
         const rows = sheetDoc.getElementsByTagName("row");  // get all rows
@@ -450,9 +451,7 @@ export class XLSX2JSON {
 
                     if (anchorCol >= this.#startingColumn && (!this.#endingColumn || anchorCol <= this.#endingColumn)) {
                         // anchor is in bounds — look up from tmpObj (same row) or jsonData (cross-row)
-                        const anchorData = anchorRow === rowNumber
-                            ? tmpObj
-                            : jsonData.find(r => r[uniqueRowIdCol] === anchorRow);
+                        const anchorData = anchorRow === rowNumber ? tmpObj : rowMap.get(anchorRow)
                         tmpObj[cellCol] = anchorData?.[anchorCol] ?? null;
                     } else {
                         // anchor is out of bounds — look up from anchorValues
@@ -473,6 +472,7 @@ export class XLSX2JSON {
                 // this is handled in load() function after the final json is created
                 tmpObj[cellCol] = value;
             }
+            rowMap.set(rowNumber, tmpObj);  // register the row
             jsonData.push(tmpObj);
         }
 
