@@ -44,7 +44,7 @@ async function test7(parser) {
         .hasNoHeader()
         .relaxValidation()
         // .setColumnBounds("B")    // WORKING
-        // .setRowStart(2)     // NOT WORKING
+        // .setRowStart(2)     // WORKING
         .load();
     console.table(data);
 }

@@ -128,6 +128,7 @@ export class XLSX2JSON {
      */
     setRowStart(rowStart) {
         ParserValidator.validateDataType(rowStart, ParserValidator.dataTypes.number);
+        ParserValidator.customValidator(rowStart < 1, "Starting row cannot be less than 1")
         this.#startingRow = rowStart;
         return this;
     }
@@ -434,8 +435,16 @@ export class XLSX2JSON {
             const columns = row.getElementsByTagName("c");  // get all columns from a row
             const rowNumber = parseInt(row.getAttribute("r"));    // get row number
 
-            if (rowNumber < this.#startingRow)  // skip all rows before starting row
+            if (rowNumber < this.#startingRow) {  // skip all rows before starting row
+                for (const column of columns) {
+                    const location = column.getAttribute("r");
+                    if (anchorCells.has(location)) {
+                        const { value } = this.#getDataFromTagName(column);
+                        anchorValues[location] = value;
+                    }
+                }
                 continue;
+            }
 
             const tmpObj = { [uniqueRowIdCol]: rowNumber };
             for (const column of columns) {
@@ -449,12 +458,13 @@ export class XLSX2JSON {
                     if (cellCol < this.#startingColumn || (this.#endingColumn && cellCol > this.#endingColumn))
                         continue;     // non-anchor cell itself is out of bounds, skip
 
-                    if (anchorCol >= this.#startingColumn && (!this.#endingColumn || anchorCol <= this.#endingColumn)) {
-                        // anchor is in bounds — look up from tmpObj (same row) or jsonData (cross-row)
+                    if (anchorCol >= this.#startingColumn && anchorRow >= this.#startingRow &&
+                        (!this.#endingColumn || anchorCol <= this.#endingColumn)) {
+                        // anchor is in bounds - look up from tmpObj (same row) or map of jsonData (cross-row)
                         const anchorData = anchorRow === rowNumber ? tmpObj : rowMap.get(anchorRow)
                         tmpObj[cellCol] = anchorData?.[anchorCol] ?? null;
                     } else {
-                        // anchor is out of bounds — look up from anchorValues
+                        // anchor is out of bounds - look up from anchorValues
                         tmpObj[cellCol] = anchorValues[anchorLocation] ?? null;
                     }
                     continue;
@@ -463,7 +473,7 @@ export class XLSX2JSON {
                 const cellCol = XLSX2JSON.#columnNameToNumber(location.replace(/\d+/, ""));    // get the cell column
 
                 if (cellCol < this.#startingColumn || (this.#endingColumn && cellCol > this.#endingColumn)) {
-                    if (anchorCells.has(location))  // out of bounds — but store if it's an anchor for a merge
+                    if (anchorCells.has(location))  // out of bounds - but store if it's an anchor for a merge
                         anchorValues[location] = value;
                     continue;
                 }
