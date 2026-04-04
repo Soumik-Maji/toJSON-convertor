@@ -87,7 +87,7 @@ export class XLSX2JSON {
         this.#startingRow = 1;
         this.#hasHeader = true;  // default is header present
         this.#relaxValidation = false;  // relaxed checking for header row presence & incomplete rows in final JSON
-        this.#mergedCells = [];     // needs to be reset for every load
+        this.#mergedCells = {};     // needs to be reset for every load
     }
 
     /**
@@ -128,6 +128,7 @@ export class XLSX2JSON {
      */
     setRowStart(rowStart) {
         ParserValidator.validateDataType(rowStart, ParserValidator.dataTypes.number);
+        ParserValidator.customValidator(rowStart < 1, "Starting row cannot be less than 1")
         this.#startingRow = rowStart;
         return this;
     }
@@ -232,8 +233,8 @@ export class XLSX2JSON {
         const ssDoc = await this.#getXMLdoc(sharedString);
         const siNodes = ssDoc.getElementsByTagName("si");
         for (const si of siNodes) {
-            let t = si.getElementsByTagName("t")[0];
-            sharedStrings.push(t ? t.textContent : "");
+            const tNodes = si.getElementsByTagName("t");
+            sharedStrings.push([...tNodes].map(t => t.textContent).join(""));
         }
         this.#sharedStrings = sharedStrings;
     }
@@ -359,11 +360,11 @@ export class XLSX2JSON {
     #getDataFromTagName(tagName) {
         let value = tagName.getElementsByTagName("v")[0]?.textContent;  // value in string format
         const type = tagName.getAttribute("t");     // how to interpret value
-        const styleIndex = tagName.getAttribute("s");    // styles on value like date, currency, etc
+        const styleIndex = parseInt(tagName.getAttribute("s"), 10);    // styles on value like date, currency, etc
         const location = tagName.getAttribute("r"); // cell id/location
 
-        if (this.#mergedCells.includes(location))  // short circuit if cell is merged
-            return { value, location, inMerged: true };
+        if (this.#mergedCells.hasOwnProperty(location))  // short circuit if cell is merged
+            return { value, location, inMerged: true, anchorLocation: this.#mergedCells[location] };
 
         switch (type) {
             case "s":   // shared string
@@ -375,17 +376,18 @@ export class XLSX2JSON {
             case "e":   // Error (e.g. #DIV/0!)
                 value = `#ERROR(${value})`;
                 break;
-            case "inlineStr": // Inline string
+            case "inlineStr": {// Inline string
                 // Extract text from <is><t>value</t></is> structure
                 const inlineStr = tagName.getElementsByTagName("is")[0];
                 value = inlineStr?.getElementsByTagName("t")[0]?.textContent ?? "";
                 break;
+            }
             default:    // handles null & "n" types as well
                 break;
         }
         value = this.#applyStyle(styleIndex, value);
 
-        return { value, location, inMerged: false };
+        return { value, location, inMerged: false, anchorLocation: null };
     }
 
     #setMergedCells(doc) {
@@ -412,7 +414,7 @@ export class XLSX2JSON {
                 for (let row = minRow; row <= maxRow; row++) {
                     const cellId = `${colLetter}${row}`;
                     if (cellId !== dataHolder)
-                        this.#mergedCells.push(cellId);
+                        this.#mergedCells[cellId] = dataHolder;
                 }
             }
         }
@@ -422,6 +424,10 @@ export class XLSX2JSON {
         const sheetDoc = await this.#getXMLdoc(xmlname);    // get the doc
         this.#setMergedCells(sheetDoc);
 
+        const anchorValues = {};    // for gathering the actual data holder cell for merged cells
+        const anchorCells = new Set(Object.values(this.#mergedCells));
+        const rowMap = new Map();   // rowNumber -> tmpObj for O(1) anchor lookup
+
         const uniqueRowIdCol = Symbol("__row__");
         const rows = sheetDoc.getElementsByTagName("row");  // get all rows
         const jsonData = [];
@@ -429,25 +435,54 @@ export class XLSX2JSON {
             const columns = row.getElementsByTagName("c");  // get all columns from a row
             const rowNumber = parseInt(row.getAttribute("r"));    // get row number
 
-            if (rowNumber < this.#startingRow)  // skip all rows before starting row
+            if (rowNumber < this.#startingRow) {  // skip all rows before starting row
+                for (const column of columns) {
+                    const location = column.getAttribute("r");
+                    if (anchorCells.has(location)) {
+                        const { value } = this.#getDataFromTagName(column);
+                        anchorValues[location] = value;
+                    }
+                }
                 continue;
+            }
 
             const tmpObj = { [uniqueRowIdCol]: rowNumber };
             for (const column of columns) {
-                let { value, location, inMerged } = this.#getDataFromTagName(column);
-                if (inMerged)   // skip if cells are merged
+                let { value, location, inMerged, anchorLocation } = this.#getDataFromTagName(column);
+
+                if (inMerged) {
+                    const anchorCol = XLSX2JSON.#columnNameToNumber(anchorLocation.replace(/\d+/, ""));
+                    const anchorRow = parseInt(anchorLocation.match(/\d+/)[0]);
+                    const cellCol = XLSX2JSON.#columnNameToNumber(location.replace(/\d+/, ""));
+
+                    if (cellCol < this.#startingColumn || (this.#endingColumn && cellCol > this.#endingColumn))
+                        continue;     // non-anchor cell itself is out of bounds, skip
+
+                    if (anchorCol >= this.#startingColumn && anchorRow >= this.#startingRow &&
+                        (!this.#endingColumn || anchorCol <= this.#endingColumn)) {
+                        // anchor is in bounds - look up from tmpObj (same row) or map of jsonData (cross-row)
+                        const anchorData = anchorRow === rowNumber ? tmpObj : rowMap.get(anchorRow)
+                        tmpObj[cellCol] = anchorData?.[anchorCol] ?? null;
+                    } else {
+                        // anchor is out of bounds - look up from anchorValues
+                        tmpObj[cellCol] = anchorValues[anchorLocation] ?? null;
+                    }
                     continue;
+                }
 
                 const cellCol = XLSX2JSON.#columnNameToNumber(location.replace(/\d+/, ""));    // get the cell column
 
-                if (cellCol < this.#startingColumn ||
-                    (this.#endingColumn && cellCol > this.#endingColumn)
-                ) continue;     // skip all columns which are not in bound
+                if (cellCol < this.#startingColumn || (this.#endingColumn && cellCol > this.#endingColumn)) {
+                    if (anchorCells.has(location))  // out of bounds - but store if it's an anchor for a merge
+                        anchorValues[location] = value;
+                    continue;
+                }
 
                 // will get nulls even after section ends because code continues to read rows
                 // this is handled in load() function after the final json is created
                 tmpObj[cellCol] = value;
             }
+            rowMap.set(rowNumber, tmpObj);  // register the row
             jsonData.push(tmpObj);
         }
 
