@@ -17,37 +17,35 @@ jobs:
               with:
                 node-version: 20
 
-            - name: Remove tests
-              run: |
-                rm -rf tests/
-                echo "removed tests directory"
-                rm index.test.js index.test.html TODO.txt
-                echo "removed index.test.js, index.test.html, TODO.txt"
-                rm -rf .github/
-                echo "removed .github directory"
-                rm -rf .vscode/
-                echo "removed .vscode directory"
 
-            - name: Install Terser
-              run: npm install -g terser
+            - name: Install npm packages
+              run: npm install -g rollup terser
 
-            - name: Minify JS files in-place
+            - name: Consolidation and Minification
               run: |
-                find . -name "*.js" | while read file; do
-                  terser "$file" -o "$file" --compress --mangle --comments '/^\*(.*?)/'
-                done
-                echo "Minified all JavaScript files in-place"
+                mkdir ../release
+                rollup index.js --file ../release/index.js --format esm --no-treeshake
+                echo "File Consolidated"
+                terser ../release/index.js -o ../release/index.js --compress --comments '/^\*(.*?)/'
+                echo "Minified file in-place"
+
+            - name: Bring essentianls
+              run: |
+                cp -f README.md ../release/ || true
+                cp -f LICENSE ../release/ || true
+                cp -f package.json ../release/ || true
 
             - name: Create archive
               run: |
-                tar -czvf /tmp/project-dist.tar.gz --exclude=".git" -C .. ${{ github.event.repository.name }}
-                mv /tmp/project-dist.tar.gz ./${{ github.event.repository.name }}.tar.gz
+                rm -rf ../${{ github.event.repository.name }}
+                mv ../release ../${{ github.event.repository.name }}
+                tar -czvf /tmp/${{ github.event.repository.name }}.tar.gz -C .. ${{ github.event.repository.name }}
 
             - name: Upload artifact
               uses: actions/upload-artifact@v6
               with:
                 name: production-build
-                path: ${{ github.event.repository.name }}.tar.gz
+                path: /tmp/${{ github.event.repository.name }}.tar.gz
 
             - name: Create Release
               if: github.event.pull_request.merged == true
@@ -55,7 +53,7 @@ jobs:
               with:
                 tag_name: release-${{ github.run_number }}
                 name: Release
-                files: ${{ github.event.repository.name }}.tar.gz
+                files: /tmp/${{ github.event.repository.name }}.tar.gz
               env:
                 GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
